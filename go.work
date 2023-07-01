@@ -3,6 +3,7 @@ go 1.18
 use (
 	./authentication-service
 	./broker-service
-		./logger-service
+	./logger-service
+	./mail-service
     ./front-end
 )
