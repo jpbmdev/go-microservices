@@ -4,6 +4,7 @@ BROKER_BINARY=brokerApp
 LOGGER_BINARY=loggerApp
 AUTH_BINARY=authApp
 MAIL_BINARY=mailApp
+LISTENER_BINARY=listenerApp
 
 ## up: starts all containers in the background without forcing build
 up:
@@ -12,7 +13,7 @@ up:
 	@echo Docker images started!
 
 ## up_build: stops docker-compose (if running), builds all projects and starts docker compose
-up_build: build_broker build_logger build_auth build_auth
+up_build: build_broker build_logger build_auth build_auth build_listener
 	@echo Stopping docker images (if running...)
 	docker-compose down
 	@echo Building (when required) and starting docker images...
@@ -37,7 +38,7 @@ build_logger:
 	chdir .\logger-service && set GOOS=linux&& set GOARCH=amd64&& set CGO_ENABLED=0 && go build -o ${LOGGER_BINARY} ./cmd/api
 	@echo Done!
 
-## build_auth: builds the broker binary as a linux executable
+## build_auth: builds the auth binary as a linux executable
 build_auth:
 	@echo Building auth binary...
 	chdir .\authentication-service && set GOOS=linux&& set GOARCH=amd64&& set CGO_ENABLED=0 && go build -o ${AUTH_BINARY} ./cmd/api
@@ -47,6 +48,12 @@ build_auth:
 build_auth:
 	@echo Building mail binary...
 	chdir .\mail-service && set GOOS=linux&& set GOARCH=amd64&& set CGO_ENABLED=0 && go build -o ${MAIL_BINARY} ./cmd/api
+	@echo Done!
+
+## build_listener: builds the listener binary as a linux executable
+build_listener:
+	@echo Building listener binary...
+	chdir .\listener-service && set GOOS=linux&& set GOARCH=amd64&& set CGO_ENABLED=0 && go build -o ${LISTENER_BINARY} .
 	@echo Done!
 
 ## build_front: builds the frone end binary

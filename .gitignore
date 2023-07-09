@@ -2,5 +2,6 @@ brokerApp
 loggerApp
 authApp
 mailApp
+listenerApp
 frontApp.exe
 db-data
