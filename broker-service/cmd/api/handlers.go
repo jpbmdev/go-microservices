@@ -2,11 +2,17 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"go-microservices/broker-service/event"
+	"go-microservices/broker-service/logs"
 	"net/http"
-	"net/rpc"
+	"time"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type RequestPayload struct {
@@ -55,8 +61,10 @@ func (app *Config) HandleSubmission(w http.ResponseWriter, r *http.Request) {
 	switch requestPayload.Action {
 	case "auth":
 		app.authenticate(w, requestPayload.Auth)
-	case "log":
-		app.logEventViaRPC(w, requestPayload.Log)
+	case "log-rabbitmq":
+		app.logEventViaRabbit(w, requestPayload.Log)
+	case "log-grpc":
+		app.LogEventViaGRPC(w, requestPayload.Log)
 	case "mail":
 		app.sendMail(w, requestPayload.Mail)
 	default:
@@ -155,7 +163,6 @@ func (app *Config) logItem(w http.ResponseWriter, entry LogPayload) {
 
 // Log via rabbit
 
-/*
 func (app *Config) logEventViaRabbit(w http.ResponseWriter, l LogPayload) {
 	err := app.pushToQueue(l.Name, l.Data)
 	if err != nil {
@@ -188,9 +195,9 @@ func (app *Config) pushToQueue(name, msg string) error {
 	}
 	return nil
 }
-*/
 
 // Log via rpc
+/*
 func (app *Config) logEventViaRPC(w http.ResponseWriter, l LogPayload) {
 	client, err := rpc.Dial("tcp", "logger-service:5001")
 	if err != nil {
@@ -214,6 +221,39 @@ func (app *Config) logEventViaRPC(w http.ResponseWriter, l LogPayload) {
 		Error:   false,
 		Message: result,
 	}
+
+	app.writeJSON(w, http.StatusAccepted, payload)
+}
+*/
+
+func (app *Config) LogEventViaGRPC(w http.ResponseWriter, l LogPayload) {
+
+	conn, err := grpc.Dial("logger-service:50001", grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
+	if err != nil {
+		app.errorJSON(w, err)
+		return
+	}
+	defer conn.Close()
+
+	c := logs.NewLogServiceClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	_, err = c.WriteLog(ctx, &logs.LogRequest{
+		LogEntry: &logs.Log{
+			Name: l.Name,
+			Data: l.Data,
+		},
+	})
+
+	if err != nil {
+		app.errorJSON(w, err)
+		return
+	}
+
+	var payload jsonResponse
+	payload.Error = false
+	payload.Message = "logged via GRPC"
 
 	app.writeJSON(w, http.StatusAccepted, payload)
 }
